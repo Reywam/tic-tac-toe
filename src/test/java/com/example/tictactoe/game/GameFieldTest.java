@@ -29,41 +29,4 @@ class GameFieldTest {
         assertEquals(availableSpace.size(), WIDTH * HEIGHT - 1);
     }
 
-//    @Test
-//    public void gameIsOverWhenHorizontalSequenceCreated() {
-//        field.put(X, new Coordinates(0, 0));
-//        field.put(X, new Coordinates(1, 0));
-//        field.put(X, new Coordinates(2, 0));
-//
-//        assertTrue(field.isAnySequenceCreated());
-//    }
-
-//    @Test
-//    public void gameIsOverWhenVerticalSequenceCreated() {
-//        field.put(X, new Coordinates(0, 0));
-//        field.put(X, new Coordinates(0, 1));
-//        field.put(X, new Coordinates(0, 2));
-//
-//        assertTrue(field.isAnySequenceCreated());
-//    }
-//
-//    @Test
-//    public void gameIsOverWhenDiagonalSequenceCreated() {
-//        field.put(X, new Coordinates(0, 0));
-//        field.put(X, new Coordinates(1, 1));
-//        field.put(X, new Coordinates(2, 2));
-//
-//        assertTrue(field.isAnySequenceCreated());
-//    }
-//
-//    @Test
-//    public void gameIsOverWhenAntiDiagonalSequenceCreated() {
-//        field.put(X, new Coordinates(2, 2));
-//        field.put(X, new Coordinates(1, 1));
-//        field.put(X, new Coordinates(0, 0));
-//
-//        assertTrue(field.isAnySequenceCreated());
-//    }
-
-
 }
