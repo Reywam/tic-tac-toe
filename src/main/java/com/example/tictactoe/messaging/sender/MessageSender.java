@@ -12,7 +12,27 @@ public class MessageSender {
     private final RabbitTemplate template;
     private final FanoutExchange exchange;
 
-    public void send(PlayGameRequest event) {
+    public void send(PlayRequest event) {
+        this.template.convertAndSend(exchange.getName(), "", event);
+    }
+
+    public void send(PlayRequestAcceptedEvent event) {
+        this.template.convertAndSend(exchange.getName(), "", event);
+    }
+
+    public void send(MoveTypeApprovalRequest event) {
+        this.template.convertAndSend(exchange.getName(), "", event);
+    }
+
+    public void send(MoveTypeApprovedEvent event) {
+        this.template.convertAndSend(exchange.getName(), "", event);
+    }
+
+    public void send(MoveTypeRejectedEvent event) {
+        this.template.convertAndSend(exchange.getName(), "", event);
+    }
+
+    public void send(MoveMadeEvent event) {
         this.template.convertAndSend(exchange.getName(), "", event);
     }
 }

@@ -9,6 +9,7 @@ import java.io.Serializable;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class PlayGameRequest implements Serializable {
+public class MoveTypeApprovalRequest implements Serializable {
     private String sender;
+    private String moveType;
 }

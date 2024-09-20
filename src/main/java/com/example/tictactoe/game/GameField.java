@@ -20,7 +20,7 @@ public class GameField {
         this.WIDTH = width;
         this.HEIGHT = height;
         this.field = new MoveType[WIDTH][HEIGHT];
-        
+
         rand = new Random();
         FREE_SPACE = new ArrayList<>();
         for (int x = 0; x < WIDTH; x++) {
@@ -52,8 +52,6 @@ public class GameField {
     }
 
     public Coordinates findFreeSpace() {
-        log.info("Available space size is {}", FREE_SPACE.size());
-
         int freeSpaceIdx = rand.nextInt(FREE_SPACE.size());
         return FREE_SPACE.get(freeSpaceIdx);
     }
