@@ -32,7 +32,24 @@ public class MessageSender {
         this.template.convertAndSend(exchange.getName(), "", event);
     }
 
+
+    public void send(MoveApprovalRequest event) {
+        this.template.convertAndSend(exchange.getName(), "", event);
+    }
+
+    public void send(MoveApprovedEvent event) {
+        this.template.convertAndSend(exchange.getName(), "", event);
+    }
+
+    public void send(MoveRejectedEvent event) {
+        this.template.convertAndSend(exchange.getName(), "", event);
+    }
+
     public void send(MoveMadeEvent event) {
+        this.template.convertAndSend(exchange.getName(), "", event);
+    }
+
+    public void send(GameIsOverEvent event) {
         this.template.convertAndSend(exchange.getName(), "", event);
     }
 }

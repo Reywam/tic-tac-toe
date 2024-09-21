@@ -13,7 +13,6 @@ class GameTest {
     void init() {
         game = new Game();
     }
-    
 
     @Test
     public void gameIsOverWhenHorizontalSequenceCreated() {
@@ -44,9 +43,9 @@ class GameTest {
 
     @Test
     public void gameIsOverWhenAntiDiagonalSequenceCreated() {
-        game.makeMove(X, new Coordinates(2, 2));
+        game.makeMove(X, new Coordinates(2, 0));
         game.makeMove(X, new Coordinates(1, 1));
-        game.makeMove(X, new Coordinates(0, 0));
+        game.makeMove(X, new Coordinates(0, 2));
 
         assertTrue(game.isOver());
     }

@@ -1,5 +1,6 @@
 package com.example.tictactoe.game;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.Random;
@@ -7,6 +8,7 @@ import java.util.Random;
 import static com.example.tictactoe.game.MoveType.O;
 import static com.example.tictactoe.game.MoveType.X;
 
+@Slf4j
 @Component
 public class Game {
     private final GameField FIELD;
@@ -39,18 +41,26 @@ public class Game {
         return isAnySequenceCreated() || FIELD.getAvailableSpaceToMove().isEmpty();
     }
 
+    public boolean isSpaceFreeToMove(Coordinates coordinates) {
+        return FIELD.get(coordinates.x(), coordinates.y()) == null;
+    }
+
     private boolean isAnySequenceCreated() {
         return checkHorizontal() || checkVertical() || checkDiagonal() || checkAntiDiagonal();
     }
 
     private boolean checkHorizontal() {
-        MoveType targetMove = FIELD.get(0, 0);
+        MoveType targetMove = null;
         for (int y = 0; y < FIELD.getHeight(); y++) {
             boolean isSequence = true;
-            for (int x = 1; x < FIELD.getWidth(); x++) {
+            for (int x = 0; x < FIELD.getWidth(); x++) {
+                if (targetMove == null) {
+                    targetMove = FIELD.get(x, y);
+                }
                 MoveType nextCell = FIELD.get(x, y);
                 if (nextCell != targetMove || nextCell == null) {
                     isSequence = false;
+                    targetMove = null;
                     break;
                 }
             }
@@ -62,13 +72,17 @@ public class Game {
     }
 
     private boolean checkVertical() {
-        MoveType targetMove = FIELD.get(0, 0);
+        MoveType targetMove = null;
         for (int x = 0; x < FIELD.getWidth(); x++) {
             boolean isSequence = true;
-            for (int y = 1; y < FIELD.getHeight(); y++) {
+            for (int y = 0; y < FIELD.getHeight(); y++) {
+                if (targetMove == null) {
+                    targetMove = FIELD.get(x, y);
+                }
                 MoveType nextCell = FIELD.get(x, y);
                 if (nextCell != targetMove || nextCell == null) {
                     isSequence = false;
+                    targetMove = null;
                     break;
                 }
             }
@@ -91,8 +105,10 @@ public class Game {
     }
 
     private boolean checkAntiDiagonal() {
-        MoveType targetMove = FIELD.get(FIELD.getWidth() - 1, FIELD.getHeight() - 1);
-        for (int x = FIELD.getWidth() - 1, y = FIELD.getHeight() - 1; x >= 0 && y >= 0; x--, y--) {
+        MoveType targetMove = FIELD.get(FIELD.getWidth() - 1, 0);
+        for (int x = FIELD.getWidth() - 1, y = 0;
+             x >= 0 && y < FIELD.getHeight();
+             x--, y++) {
             MoveType nextCell = FIELD.get(x, y);
             if (nextCell != targetMove || nextCell == null) {
                 return false;
