@@ -206,10 +206,12 @@ public class EventProcessor {
         }
 
         log.info("{}:{}->{}", event.getSender(), event.getMoveType(), event.getCoordinates());
+        Thread.sleep(3000);
 
         game.makeMove(MoveType.valueOf(event.getMoveType()), event.getCoordinates());
         moves.add(event);
 
+        Thread.sleep(3000);
         game.printField();
         if (game.isOver()) {
             game.printField();
