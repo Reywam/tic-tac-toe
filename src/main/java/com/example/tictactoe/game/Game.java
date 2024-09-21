@@ -29,6 +29,10 @@ public class Game {
         FIELD.put(move, coordinates);
     }
 
+    public GameField getField() {
+        return FIELD;
+    }
+
     public void printField() {
         FIELD.printField();
     }

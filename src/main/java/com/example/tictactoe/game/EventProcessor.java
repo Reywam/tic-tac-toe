@@ -187,7 +187,8 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveApprovedEvent event) {
+    public void receive(MoveApprovedEvent event) throws InterruptedException {
+        Thread.sleep(3000);
         if (event.getSender().equals(myself) || !event.getSender().equals(opponent)) {
             return;
         }
@@ -196,6 +197,7 @@ public class EventProcessor {
         game.makeMove(moveType, event.getCoordinates());
         MoveMadeEvent t = new MoveMadeEvent(myself, moveType.name(), event.getCoordinates());
         moves.add(t);
+
         sender.send(t);
     }
 
@@ -206,12 +208,10 @@ public class EventProcessor {
         }
 
         log.info("{}:{}->{}", event.getSender(), event.getMoveType(), event.getCoordinates());
-        Thread.sleep(3000);
 
         game.makeMove(MoveType.valueOf(event.getMoveType()), event.getCoordinates());
         moves.add(event);
 
-        Thread.sleep(3000);
         game.printField();
         if (game.isOver()) {
             game.printField();
