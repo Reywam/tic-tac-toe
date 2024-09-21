@@ -30,8 +30,6 @@ public class EventProcessor {
 
     private final MessageSender sender;
 
-    private boolean isOpponentFoundAlready = false;
-    private boolean gameIsStarted = false;
     private final List<MoveMadeEvent> moves = new ArrayList<>();
 
     @EventListener(ApplicationReadyEvent.class)
@@ -147,7 +145,6 @@ public class EventProcessor {
         } else {
             log.info("{} is waiting for the {} to make first move", myself, opponent);
         }
-        gameIsStarted = true;
     }
 
     @RabbitHandler
@@ -256,6 +253,7 @@ public class EventProcessor {
 
         if (!game.isOver()) {
             log.error("Game is not over on the side of {}", myself);
+            game.setState(GameState.INCONSISTENT);
             return;
         }
 

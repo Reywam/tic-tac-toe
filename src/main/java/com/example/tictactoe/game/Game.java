@@ -16,13 +16,24 @@ public class Game {
     private final GameField FIELD;
     private final MoveType[] ALLOWED_MOVE_TYPES;
     @Getter
-    @Setter
     private GameState state;
+    @Getter
+    private GameState previousState;
 
     public Game() {
         FIELD = new GameField(3, 3);
         ALLOWED_MOVE_TYPES = new MoveType[]{X, O};
         state = GameState.READY;
+        previousState = GameState.READY;
+    }
+
+    public void setState(GameState state) {
+        previousState = this.state;
+        this.state = state;
+    }
+
+    public void rollbackState() {
+        this.state = previousState;
     }
 
     public MoveType defineMoveType() {
@@ -77,13 +88,9 @@ public class Game {
         for (int y = 0; y < FIELD.getHeight(); y++) {
             boolean isSequence = true;
             for (int x = 0; x < FIELD.getWidth(); x++) {
-                if (targetMove == null) {
-                    targetMove = FIELD.get(x, y);
-                }
                 MoveType nextCell = FIELD.get(x, y);
                 if (nextCell != targetMove || nextCell == null) {
                     isSequence = false;
-                    targetMove = null;
                     break;
                 }
             }
@@ -98,13 +105,9 @@ public class Game {
         for (int x = 0; x < FIELD.getWidth(); x++) {
             boolean isSequence = true;
             for (int y = 0; y < FIELD.getHeight(); y++) {
-                if (targetMove == null) {
-                    targetMove = FIELD.get(x, y);
-                }
                 MoveType nextCell = FIELD.get(x, y);
                 if (nextCell != targetMove || nextCell == null) {
                     isSequence = false;
-                    targetMove = null;
                     break;
                 }
             }

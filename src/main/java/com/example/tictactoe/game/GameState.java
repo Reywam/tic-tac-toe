@@ -7,4 +7,5 @@ public enum GameState {
     CHOOSING_MOVE_TYPE,
     IN_PROGRESS,
     IS_OVER,
+    INCONSISTENT
 }
