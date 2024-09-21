@@ -1,6 +1,6 @@
 package com.example.tictactoe.controller;
 
-import com.example.tictactoe.dto.FieldStateDto;
+import com.example.tictactoe.dto.GameStateDto;
 import com.example.tictactoe.game.Game;
 import com.example.tictactoe.game.GameField;
 import com.example.tictactoe.game.MoveType;
@@ -27,6 +27,6 @@ public class GameController {
             }
         }
 
-        return ResponseEntity.ok(new FieldStateDto(cells));
+        return ResponseEntity.ok(new GameStateDto(cells, game.getWinner()));
     }
 }

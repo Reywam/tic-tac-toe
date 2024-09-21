@@ -42,19 +42,32 @@ public class Game {
     }
 
     public boolean isOver() {
-        return isAnySequenceCreated() || FIELD.getAvailableSpaceToMove().isEmpty();
+        return isAnySequenceCreated(X)
+                || isAnySequenceCreated(O)
+                || FIELD.getAvailableSpaceToMove().isEmpty();
+    }
+
+    public String getWinner() {
+        if (isAnySequenceCreated(X)) return X.name();
+        if (isAnySequenceCreated(O)) return O.name();
+        if (isOver()) {
+            return "DRAW";
+        }
+        return "NOT_DEFINED_YET";
     }
 
     public boolean isSpaceFreeToMove(Coordinates coordinates) {
         return FIELD.get(coordinates.x(), coordinates.y()) == null;
     }
 
-    private boolean isAnySequenceCreated() {
-        return checkHorizontal() || checkVertical() || checkDiagonal() || checkAntiDiagonal();
+    private boolean isAnySequenceCreated(MoveType moveType) {
+        return checkHorizontal(moveType)
+                || checkVertical(moveType)
+                || checkDiagonal(moveType)
+                || checkAntiDiagonal(moveType);
     }
 
-    private boolean checkHorizontal() {
-        MoveType targetMove = null;
+    private boolean checkHorizontal(MoveType targetMove) {
         for (int y = 0; y < FIELD.getHeight(); y++) {
             boolean isSequence = true;
             for (int x = 0; x < FIELD.getWidth(); x++) {
@@ -75,8 +88,7 @@ public class Game {
         return false;
     }
 
-    private boolean checkVertical() {
-        MoveType targetMove = null;
+    private boolean checkVertical(MoveType targetMove) {
         for (int x = 0; x < FIELD.getWidth(); x++) {
             boolean isSequence = true;
             for (int y = 0; y < FIELD.getHeight(); y++) {
@@ -97,9 +109,8 @@ public class Game {
         return false;
     }
 
-    private boolean checkDiagonal() {
-        MoveType targetMove = FIELD.get(0, 0);
-        for (int x = 1, y = 1; x < FIELD.getWidth() && y < FIELD.getHeight(); x++, y++) {
+    private boolean checkDiagonal(MoveType targetMove) {
+        for (int x = 0, y = 0; x < FIELD.getWidth() && y < FIELD.getHeight(); x++, y++) {
             MoveType nextCell = FIELD.get(x, y);
             if (nextCell != targetMove || nextCell == null) {
                 return false;
@@ -108,8 +119,7 @@ public class Game {
         return true;
     }
 
-    private boolean checkAntiDiagonal() {
-        MoveType targetMove = FIELD.get(FIELD.getWidth() - 1, 0);
+    private boolean checkAntiDiagonal(MoveType targetMove) {
         for (int x = FIELD.getWidth() - 1, y = 0;
              x >= 0 && y < FIELD.getHeight();
              x--, y++) {
