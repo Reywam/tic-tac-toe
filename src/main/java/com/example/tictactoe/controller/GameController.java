@@ -18,7 +18,7 @@ public class GameController {
     private final Game game;
 
     @GetMapping
-    public ResponseEntity<?> getState() {
+    public ResponseEntity<GameStateDto> getState() {
         GameField field = game.getField();
         MoveType[][] cells = new MoveType[field.getWidth()][field.getHeight()];
         for (int x = 0; x < field.getWidth(); x++) {
@@ -27,6 +27,6 @@ public class GameController {
             }
         }
 
-        return ResponseEntity.ok(new GameStateDto(cells, game.getWinner()));
+        return ResponseEntity.ok(new GameStateDto(cells, game.getState(), game.getWinner()));
     }
 }

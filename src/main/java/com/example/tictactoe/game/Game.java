@@ -1,5 +1,7 @@
 package com.example.tictactoe.game;
 
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -13,10 +15,14 @@ import static com.example.tictactoe.game.MoveType.X;
 public class Game {
     private final GameField FIELD;
     private final MoveType[] ALLOWED_MOVE_TYPES;
+    @Getter
+    @Setter
+    private GameState state;
 
     public Game() {
         FIELD = new GameField(3, 3);
         ALLOWED_MOVE_TYPES = new MoveType[]{X, O};
+        state = GameState.READY;
     }
 
     public MoveType defineMoveType() {

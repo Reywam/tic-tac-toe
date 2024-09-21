@@ -36,8 +36,9 @@ public class EventProcessor {
 
     @EventListener(ApplicationReadyEvent.class)
     public void start() {
-        log.info("{} is started and ready for play. Sending play request", myself);
+        log.info("{} is started and ready to play. Sending play request", myself);
         sender.send(new PlayRequest(myself));
+        game.setState(GameState.SEARCHING_FOR_THE_OPPONENT);
     }
 
     @RabbitHandler
@@ -46,8 +47,8 @@ public class EventProcessor {
             return;
         }
 
-        if (isOpponentFoundAlready && !opponent.equals(event.getSender())) {
-            log.error("{} already playing with someone, ignoring play request from {}", myself, event.getSender());
+        if (game.getState() != GameState.SEARCHING_FOR_THE_OPPONENT) {
+            log.error("{} tries to play with game in state {}", event.getSender(), game.getState());
             return;
         }
 
@@ -57,7 +58,6 @@ public class EventProcessor {
         }
 
         log.info("{} received play game request from {}", myself, event.getSender());
-
         sender.send(new PlayRequestAcceptedEvent(myself));
     }
 
@@ -67,9 +67,8 @@ public class EventProcessor {
             return;
         }
 
-        if (isOpponentFoundAlready && !opponent.equals(event.getSender())) {
-            // Already playing with someone
-            log.error("{} already playing with someone, ignoring play request from {}", myself, event.getSender());
+        if (game.getState() != GameState.SEARCHING_FOR_THE_OPPONENT) {
+            log.error("Not ready to process new opponents");
             return;
         }
 
@@ -78,18 +77,25 @@ public class EventProcessor {
             return;
         }
 
-        isOpponentFoundAlready = true;
         opponent = event.getSender();
+        game.setState(GameState.OPPONENT_FOUND);
+
         log.info("{} accepted play request. Starting game", event.getSender());
 
         moveType = game.defineMoveType();
         log.info("{} defined move type {}", myself, moveType.name());
         sender.send(new MoveTypeApprovalRequest(myself, moveType.name()));
+        game.setState(GameState.CHOOSING_MOVE_TYPE);
     }
 
     @RabbitHandler
     public void receive(MoveTypeApprovalRequest event) {
         if (event.getSender().equals(myself) || !event.getSender().equals(opponent)) {
+            return;
+        }
+
+        if (game.getState() != GameState.CHOOSING_MOVE_TYPE) {
+            log.error("{} tries to choose move type", event.getSender());
             return;
         }
 
@@ -108,6 +114,11 @@ public class EventProcessor {
             return;
         }
 
+        if (game.getState() != GameState.CHOOSING_MOVE_TYPE) {
+            log.error("{} try to reject move type", event.getSender());
+            return;
+        }
+
         log.info("{} rejected move type {}, changing", event.getSender(), event.getMoveType());
         moveType = game.defineMoveType();
 
@@ -121,19 +132,18 @@ public class EventProcessor {
             return;
         }
 
+        if (game.getState() != GameState.CHOOSING_MOVE_TYPE) {
+            log.error("{} try to approve move type", event.getSender());
+            return;
+        }
+
+        game.setState(GameState.IN_PROGRESS);
         log.info("{} approved move type {}", event.getSender(), event.getMoveType());
         if (moveType == X) {
-            // Make turn
             log.info("{} is making first move", myself);
 
             Coordinates coordinates = game.getFreeSpaceToMakeMove();
             sender.send(new MoveApprovalRequest(myself, moveType.name(), coordinates));
-//            game.makeMove(moveType, coordinates);
-//            log.info("{} made move to {}", myself, coordinates);
-
-//            //moves.add(t);
-//            MoveMadeEvent t = new MoveMadeEvent(myself, moveType.name(), coordinates);
-//            sender.send(t);
         } else {
             log.info("{} is waiting for the {} to make first move", myself, opponent);
         }
@@ -146,13 +156,8 @@ public class EventProcessor {
             return;
         }
 
-        if (!gameIsStarted) {
-            log.error("{} tries to make move even if game is not started yet", event.getSender());
-            return;
-        }
-
-        if (game.isOver()) {
-            log.error("{} tries to make move even if game if over", event.getSender());
+        if (game.getState() != GameState.IN_PROGRESS) {
+            log.error("{} tries to approve move even if game is not in progress", event.getSender());
             return;
         }
 
@@ -180,6 +185,11 @@ public class EventProcessor {
             return;
         }
 
+        if (game.getState() != GameState.IN_PROGRESS) {
+            log.error("{} tries to reject move even if game is not in progress", event.getSender());
+            return;
+        }
+
         log.info("Move to {} was rejected by {}", event.getCoordinates(), event.getSender());
 
         Coordinates coordinates = game.getFreeSpaceToMakeMove();
@@ -190,6 +200,11 @@ public class EventProcessor {
     public void receive(MoveApprovedEvent event) throws InterruptedException {
         Thread.sleep(3000);
         if (event.getSender().equals(myself) || !event.getSender().equals(opponent)) {
+            return;
+        }
+
+        if (game.getState() != GameState.IN_PROGRESS) {
+            log.error("{} tries to approve move even if game is not in progress", event.getSender());
             return;
         }
 
@@ -207,13 +222,17 @@ public class EventProcessor {
             return;
         }
 
-        log.info("{}:{}->{}", event.getSender(), event.getMoveType(), event.getCoordinates());
+        if (game.getState() != GameState.IN_PROGRESS) {
+            log.error("{} tries to make move even if game is not in progress", event.getSender());
+            return;
+        }
 
         game.makeMove(MoveType.valueOf(event.getMoveType()), event.getCoordinates());
         moves.add(event);
 
         game.printField();
         if (game.isOver()) {
+            game.setState(GameState.IS_OVER);
             game.printField();
             log.info("Game is over, sending game over event");
             sender.send(new GameIsOverEvent(myself));
@@ -230,7 +249,7 @@ public class EventProcessor {
             return;
         }
 
-        if (!gameIsStarted) {
+        if (game.getState() != GameState.IN_PROGRESS) {
             log.error("{} tries to end not started game", event.getSender());
             return;
         }
@@ -239,6 +258,8 @@ public class EventProcessor {
             log.error("Game is not over on the side of {}", myself);
             return;
         }
+
+        game.setState(GameState.IS_OVER);
 
         log.info("Game is over");
         game.printField();
