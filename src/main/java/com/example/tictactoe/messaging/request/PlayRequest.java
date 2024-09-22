@@ -1,4 +1,4 @@
-package com.example.tictactoe.messaging;
+package com.example.tictactoe.messaging.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,6 +9,6 @@ import java.io.Serializable;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ReadyConfirmationEvent implements Serializable {
+public class PlayRequest implements Serializable {
     private String sender;
 }

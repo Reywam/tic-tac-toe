@@ -1,4 +1,4 @@
-package com.example.tictactoe.messaging;
+package com.example.tictactoe.messaging.event;
 
 import com.example.tictactoe.game.Coordinates;
 import lombok.AllArgsConstructor;

@@ -1,6 +1,9 @@
 package com.example.tictactoe.game;
 
-import com.example.tictactoe.messaging.*;
+import com.example.tictactoe.messaging.event.*;
+import com.example.tictactoe.messaging.request.MoveApprovalRequest;
+import com.example.tictactoe.messaging.request.MoveTypeApprovalRequest;
+import com.example.tictactoe.messaging.request.PlayRequest;
 import com.example.tictactoe.messaging.sender.MessageSender;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
