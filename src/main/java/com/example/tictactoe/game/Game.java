@@ -19,6 +19,9 @@ public class Game {
     private GameState state;
     @Getter
     private GameState previousState;
+    @Getter
+    @Setter
+    private String opponent;
 
     public Game() {
         FIELD = new GameField(3, 3);

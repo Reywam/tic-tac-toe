@@ -2,15 +2,19 @@ package com.example.tictactoe.game;
 
 import com.example.tictactoe.messaging.*;
 import com.example.tictactoe.messaging.sender.MessageSender;
+import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,7 +22,7 @@ import static com.example.tictactoe.game.MoveType.X;
 
 @Slf4j
 @Service
-@RabbitListener(queues = "#{queue.name}")
+@RabbitListener(queues = "#{gameQueue.name}", ackMode = "MANUAL")
 @RequiredArgsConstructor
 public class EventProcessor {
     private final Game game;
@@ -26,7 +30,6 @@ public class EventProcessor {
 
     @Value("${spring.application.name}")
     private String myself;
-    private String opponent;
 
     private final MessageSender sender;
 
@@ -39,18 +42,30 @@ public class EventProcessor {
         game.setState(GameState.SEARCHING_FOR_THE_OPPONENT);
     }
 
+
+    private void reject(Channel channel, long tag) throws IOException {
+        channel.basicReject(tag, true);
+    }
+
+    private void ack(Channel channel, long tag) throws IOException {
+        channel.basicAck(tag, false);
+    }
+
     @RabbitHandler
-    public void receive(PlayRequest event) {
+    public void receive(PlayRequest event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
         if (event.getSender().equals(myself)) {
+            reject(channel, tag);
             return;
         }
+
+        ack(channel, tag);
 
         if (game.getState() != GameState.SEARCHING_FOR_THE_OPPONENT) {
             log.error("{} tries to play with game in state {}", event.getSender(), game.getState());
             return;
         }
 
-        if (event.getSender().equals(opponent)) {
+        if (event.getSender().equals(game.getOpponent())) {
             log.info("Already processing play request from {}", event.getSender());
             return;
         }
@@ -59,23 +74,28 @@ public class EventProcessor {
         sender.send(new PlayRequestAcceptedEvent(myself));
     }
 
+
     @RabbitHandler
-    public void receive(PlayRequestAcceptedEvent event) {
+    public void receive(PlayRequestAcceptedEvent event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
         if (event.getSender().equals(myself)) {
+            reject(channel, tag);
             return;
         }
 
+        ack(channel, tag);
+
         if (game.getState() != GameState.SEARCHING_FOR_THE_OPPONENT) {
+            ack(channel, tag);
             log.error("Not ready to process new opponents");
             return;
         }
 
-        if (event.getSender().equals(opponent)) {
+        if (event.getSender().equals(game.getOpponent())) {
             log.info("Already accepting request from {}", event.getSender());
             return;
         }
 
-        opponent = event.getSender();
+        game.setOpponent(event.getSender());
         game.setState(GameState.OPPONENT_FOUND);
 
         log.info("{} accepted play request. Starting game", event.getSender());
@@ -87,10 +107,14 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveTypeApprovalRequest event) {
-        if (event.getSender().equals(myself) || !event.getSender().equals(opponent)) {
+    public void receive(MoveTypeApprovalRequest event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
+        if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
+            log.info("Opponent {}", game.getOpponent());
+            reject(channel, tag);
             return;
         }
+
+        ack(channel, tag);
 
         if (game.getState() != GameState.CHOOSING_MOVE_TYPE) {
             log.error("{} tries to choose move type", event.getSender());
@@ -107,10 +131,13 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveTypeRejectedEvent event) {
-        if (event.getSender().equals(myself) || !event.getSender().equals(opponent)) {
+    public void receive(MoveTypeRejectedEvent event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
+        if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
+            reject(channel, tag);
             return;
         }
+
+        ack(channel, tag);
 
         if (game.getState() != GameState.CHOOSING_MOVE_TYPE) {
             log.error("{} try to reject move type", event.getSender());
@@ -125,10 +152,13 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveTypeApprovedEvent event) {
-        if (event.getSender().equals(myself) || !event.getSender().equals(opponent)) {
+    public void receive(MoveTypeApprovedEvent event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
+        if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
+            reject(channel, tag);
             return;
         }
+
+        ack(channel, tag);
 
         if (game.getState() != GameState.CHOOSING_MOVE_TYPE) {
             log.error("{} try to approve move type", event.getSender());
@@ -143,15 +173,18 @@ public class EventProcessor {
             Coordinates coordinates = game.getFreeSpaceToMakeMove();
             sender.send(new MoveApprovalRequest(myself, moveType.name(), coordinates));
         } else {
-            log.info("{} is waiting for the {} to make first move", myself, opponent);
+            log.info("{} is waiting for the {} to make first move", myself, game.getOpponent());
         }
     }
 
     @RabbitHandler
-    public void receive(MoveApprovalRequest event) {
-        if (event.getSender().equals(myself) || !event.getSender().equals(opponent)) {
+    public void receive(MoveApprovalRequest event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
+        if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
+            reject(channel, tag);
             return;
         }
+
+        ack(channel, tag);
 
         if (game.getState() != GameState.IN_PROGRESS) {
             log.error("{} tries to approve move even if game is not in progress", event.getSender());
@@ -177,10 +210,13 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveRejectedEvent event) {
-        if (event.getSender().equals(myself) || !event.getSender().equals(opponent)) {
+    public void receive(MoveRejectedEvent event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
+        if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
+            reject(channel, tag);
             return;
         }
+
+        ack(channel, tag);
 
         if (game.getState() != GameState.IN_PROGRESS) {
             log.error("{} tries to reject move even if game is not in progress", event.getSender());
@@ -194,11 +230,14 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveApprovedEvent event) throws InterruptedException {
+    public void receive(MoveApprovedEvent event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws InterruptedException, IOException {
         Thread.sleep(3000);
-        if (event.getSender().equals(myself) || !event.getSender().equals(opponent)) {
+        if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
+            reject(channel, tag);
             return;
         }
+
+        ack(channel, tag);
 
         if (game.getState() != GameState.IN_PROGRESS) {
             log.error("{} tries to approve move even if game is not in progress", event.getSender());
@@ -214,10 +253,13 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveMadeEvent event) throws InterruptedException {
-        if (event.getSender().equals(myself) || !event.getSender().equals(opponent)) {
+    public void receive(MoveMadeEvent event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws InterruptedException, IOException {
+        if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
+            reject(channel, tag);
             return;
         }
+
+        ack(channel, tag);
 
         if (game.getState() != GameState.IN_PROGRESS) {
             log.error("{} tries to make move even if game is not in progress", event.getSender());
@@ -241,10 +283,13 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(GameIsOverEvent event) {
-        if (event.getSender().equals(myself) || !event.getSender().equals(opponent)) {
+    public void receive(GameIsOverEvent event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
+        if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
+            reject(channel, tag);
             return;
         }
+
+        ack(channel, tag);
 
         if (game.getState() != GameState.IN_PROGRESS) {
             log.error("{} tries to end not started game", event.getSender());
