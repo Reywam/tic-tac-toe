@@ -54,13 +54,18 @@ public class EventProcessor {
         channel.basicAck(tag, false);
     }
 
-    @RabbitHandler
-    public void receive(PlayRequest event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
-        if (event.getSender().equals(myself)) {
+    private boolean rejectedFromMyself(String sender, Channel channel, long tag) throws IOException {
+        if (sender.equals(myself)) {
             reject(channel, tag);
-            return;
+            return true;
         }
 
+        return false;
+    }
+
+    @RabbitHandler
+    public void receive(PlayRequest event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
+        if (rejectedFromMyself(event.getSender(), channel, tag)) return;
         ack(channel, tag);
 
         if (game.getState() != GameState.SEARCHING_FOR_THE_OPPONENT) {
@@ -80,11 +85,7 @@ public class EventProcessor {
 
     @RabbitHandler
     public void receive(PlayRequestAcceptedEvent event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
-        if (event.getSender().equals(myself)) {
-            reject(channel, tag);
-            return;
-        }
-
+        if (rejectedFromMyself(event.getSender(), channel, tag)) return;
         ack(channel, tag);
 
         if (game.getState() != GameState.SEARCHING_FOR_THE_OPPONENT) {
@@ -256,7 +257,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveMadeEvent event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws InterruptedException, IOException {
+    public void receive(MoveMadeEvent event, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long tag) throws IOException {
         if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
             reject(channel, tag);
             return;

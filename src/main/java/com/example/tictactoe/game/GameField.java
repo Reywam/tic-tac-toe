@@ -39,6 +39,10 @@ public class GameField {
     }
 
     public void put(MoveType moveType, Coordinates coordinates) {
+        if (!FREE_SPACE.contains(coordinates)) {
+            throw new RuntimeException(String.format("Coordinates[%d:%d] already occupied"
+                    , coordinates.x(), coordinates.y()));
+        }
         FREE_SPACE.remove(coordinates);
         field[coordinates.x()][coordinates.y()] = moveType;
     }

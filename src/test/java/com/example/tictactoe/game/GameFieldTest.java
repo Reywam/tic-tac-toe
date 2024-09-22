@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static com.example.tictactoe.game.MoveType.O;
 import static com.example.tictactoe.game.MoveType.X;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -19,14 +20,20 @@ class GameFieldTest {
     }
 
     @Test
-    public void canMakeMove() {
+    public void canRecordMoveMade() {
         List<Coordinates> availableSpace = field.getAvailableSpaceToMove();
-        assertEquals(availableSpace.size(), WIDTH * HEIGHT);
+        assertEquals(WIDTH * HEIGHT, availableSpace.size());
 
         field.put(X, new Coordinates(0, 0));
-        assertEquals(field.get(0, 0), X);
+        assertEquals(X, field.get(0, 0));
 
-        assertEquals(availableSpace.size(), WIDTH * HEIGHT - 1);
+        assertEquals(WIDTH * HEIGHT - 1, availableSpace.size());
+    }
+
+    @Test
+    public void moveToOccupiedCoordinatedIsNotAllowed() {
+        field.put(X, new Coordinates(0, 0));
+        assertThrows(RuntimeException.class, () -> field.put(O, new Coordinates(0, 0)));
     }
 
 }
