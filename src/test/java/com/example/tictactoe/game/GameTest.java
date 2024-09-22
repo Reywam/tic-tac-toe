@@ -73,7 +73,8 @@ class GameTest {
 
     @Test
     public void gameResultIsNotDefinedWhenGameIsInProgress() {
-        game.setState(GameState.IN_PROGRESS);
+        game.makeMove(O, new Coordinates(2, 0));
+        game.makeMove(X, new Coordinates(1, 0));
         assertEquals("NOT_DEFINED_YET", game.getWinner());
     }
 

@@ -6,7 +6,7 @@ import com.rabbitmq.client.ShutdownSignalException;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.FanoutExchange;
 import org.springframework.amqp.rabbit.connection.Connection;
 import org.springframework.amqp.rabbit.connection.ConnectionListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class MessageSender {
     private final RabbitTemplate template;
-    private final Queue queue;
+    private final FanoutExchange exchange;
     private final Game game;
 
     @PostConstruct
@@ -40,6 +40,6 @@ public class MessageSender {
     }
 
     public void send(Object event) {
-        this.template.convertAndSend(queue.getName(), event);
+        this.template.convertAndSend(exchange.getName(), "", event);
     }
 }

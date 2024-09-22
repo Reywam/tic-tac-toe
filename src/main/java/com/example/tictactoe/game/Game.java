@@ -1,10 +1,14 @@
 package com.example.tictactoe.game;
 
+import com.example.tictactoe.messaging.event.MoveMadeEvent;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 import static com.example.tictactoe.game.MoveType.O;
@@ -12,22 +16,29 @@ import static com.example.tictactoe.game.MoveType.X;
 
 @Slf4j
 @Component
+@Data
 public class Game {
-    private final GameField FIELD;
+    private GameField FIELD;
     private final MoveType[] ALLOWED_MOVE_TYPES;
-    @Getter
     private GameState state;
-    @Getter
     private GameState previousState;
-    @Getter
-    @Setter
     private String opponent;
+    private MoveType moveType;
+    private final List<MoveMadeEvent> moves = new ArrayList<>();
 
     public Game() {
         FIELD = new GameField(3, 3);
         ALLOWED_MOVE_TYPES = new MoveType[]{X, O};
-        state = GameState.READY;
-        previousState = GameState.READY;
+        state = GameState.SEARCHING_FOR_THE_OPPONENT;
+        previousState = GameState.SEARCHING_FOR_THE_OPPONENT;
+    }
+
+    public void restart() {
+        FIELD = new GameField(3, 3);
+        opponent = null;
+        state = GameState.SEARCHING_FOR_THE_OPPONENT;
+        previousState = GameState.SEARCHING_FOR_THE_OPPONENT;
+        moves.clear();
     }
 
     public void setState(GameState state) {
