@@ -1,25 +1,24 @@
-package com.example.tictactoe.game;
+package com.example.tictactoe.messaging;
 
+import com.example.tictactoe.game.Coordinates;
+import com.example.tictactoe.game.Game;
+import com.example.tictactoe.game.GameState;
+import com.example.tictactoe.game.MoveType;
 import com.example.tictactoe.messaging.event.*;
 import com.example.tictactoe.messaging.request.MoveApprovalRequest;
 import com.example.tictactoe.messaging.request.MoveTypeApprovalRequest;
 import com.example.tictactoe.messaging.request.PlayRequest;
 import com.example.tictactoe.messaging.sender.MessageSender;
-import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.support.AmqpHeaders;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 import static com.example.tictactoe.game.MoveType.X;
 
@@ -34,6 +33,7 @@ public class EventProcessor {
     private String myself;
 
     private final MessageSender sender;
+    private final Validator validator;
 
     @EventListener(ApplicationReadyEvent.class)
     public void start() {
@@ -44,13 +44,8 @@ public class EventProcessor {
 
 
     @RabbitHandler
-    public void receive(PlayRequest event) throws IOException {
-        if (event.getSender().equals(myself)) {
-            return;
-        }
-
-        if (game.getState() != GameState.SEARCHING_FOR_THE_OPPONENT) {
-            log.error("{} tries to play with game in state {}", event.getSender(), game.getState());
+    public void receive(PlayRequest event) {
+        if (validator.isNotValid(GameState.SEARCHING_FOR_THE_OPPONENT, event.getSender())) {
             return;
         }
 
@@ -63,15 +58,9 @@ public class EventProcessor {
         sender.send(new PlayRequestAcceptedEvent(myself));
     }
 
-
     @RabbitHandler
-    public void receive(PlayRequestAcceptedEvent event) throws IOException {
-        if (event.getSender().equals(myself)) {
-            return;
-        }
-
-        if (game.getState() != GameState.SEARCHING_FOR_THE_OPPONENT) {
-            log.error("Not ready to process new opponents");
+    public void receive(PlayRequestAcceptedEvent event) {
+        if (validator.isNotValid(GameState.SEARCHING_FOR_THE_OPPONENT, event.getSender())) {
             return;
         }
 
@@ -92,13 +81,8 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveTypeApprovalRequest event) throws IOException {
-        if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
-            return;
-        }
-
-        if (game.getState() != GameState.CHOOSING_MOVE_TYPE) {
-            log.error("{} tries to choose move type", event.getSender());
+    public void receive(MoveTypeApprovalRequest event) {
+        if (validator.isNotValid(GameState.CHOOSING_MOVE_TYPE, event.getSender())) {
             return;
         }
 
@@ -112,13 +96,8 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveTypeRejectedEvent event) throws IOException {
-        if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
-            return;
-        }
-
-        if (game.getState() != GameState.CHOOSING_MOVE_TYPE) {
-            log.error("{} try to reject move type", event.getSender());
+    public void receive(MoveTypeRejectedEvent event) {
+        if (validator.isNotValid(GameState.CHOOSING_MOVE_TYPE, event.getSender())) {
             return;
         }
 
@@ -130,13 +109,8 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveTypeApprovedEvent event) throws IOException {
-        if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
-            return;
-        }
-
-        if (game.getState() != GameState.CHOOSING_MOVE_TYPE) {
-            log.error("{} try to approve move type", event.getSender());
+    public void receive(MoveTypeApprovedEvent event) {
+        if (validator.isNotValid(GameState.CHOOSING_MOVE_TYPE, event.getSender())) {
             return;
         }
 
@@ -153,13 +127,8 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveApprovalRequest event) throws IOException {
-        if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
-            return;
-        }
-
-        if (game.getState() != GameState.IN_PROGRESS) {
-            log.error("{} tries to approve move even if game is not in progress", event.getSender());
+    public void receive(MoveApprovalRequest event) {
+        if (validator.isNotValid(GameState.IN_PROGRESS, event.getSender())) {
             return;
         }
 
@@ -183,13 +152,8 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveRejectedEvent event) throws IOException {
-        if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
-            return;
-        }
-
-        if (game.getState() != GameState.IN_PROGRESS) {
-            log.error("{} tries to reject move even if game is not in progress", event.getSender());
+    public void receive(MoveRejectedEvent event) {
+        if (validator.isNotValid(GameState.IN_PROGRESS, event.getSender())) {
             return;
         }
 
@@ -202,12 +166,7 @@ public class EventProcessor {
     @RabbitHandler
     public void receive(MoveApprovedEvent event) throws InterruptedException {
         Thread.sleep(3000);
-        if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
-            return;
-        }
-
-        if (game.getState() != GameState.IN_PROGRESS) {
-            log.error("{} tries to approve move even if game is not in progress", event.getSender());
+        if (validator.isNotValid(GameState.IN_PROGRESS, event.getSender())) {
             return;
         }
 
@@ -221,23 +180,16 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveMadeEvent event) throws IOException {
-        if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
-            return;
-        }
-
-        if (game.getState() != GameState.IN_PROGRESS) {
-            log.error("{} tries to make move even if game is not in progress", event.getSender());
+    public void receive(MoveMadeEvent event) {
+        if (validator.isNotValid(GameState.IN_PROGRESS, event.getSender())) {
             return;
         }
 
         game.makeMove(MoveType.valueOf(event.getMoveType()), event.getCoordinates());
         game.getMoves().add(event);
 
-        game.printField();
         if (game.isOver()) {
             game.setState(GameState.IS_OVER);
-            game.printField();
             log.info("Game is over, sending game over event");
             sender.send(new GameIsOverEvent(myself));
             return;
@@ -248,13 +200,8 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(GameIsOverEvent event) throws IOException {
-        if (event.getSender().equals(myself) || !event.getSender().equals(game.getOpponent())) {
-            return;
-        }
-
-        if (game.getState() != GameState.IN_PROGRESS) {
-            log.error("{} tries to end not started game", event.getSender());
+    public void receive(GameIsOverEvent event) {
+        if (validator.isNotValid(GameState.IN_PROGRESS, event.getSender())) {
             return;
         }
 
@@ -265,8 +212,6 @@ public class EventProcessor {
         }
 
         game.setState(GameState.IS_OVER);
-
         log.info("Game is over");
-        game.printField();
     }
 }

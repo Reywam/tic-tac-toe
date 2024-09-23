@@ -32,8 +32,6 @@ import static com.example.tictactoe.game.MoveType.O;
 import static com.example.tictactoe.game.MoveType.X;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest
