@@ -15,7 +15,7 @@ public class Validator {
     private String myself;
     private final Game game;
 
-    private boolean isIncorrectState(GameState expected) {
+    public boolean isIncorrectState(GameState expected) {
         if (game.getState() != expected) {
             log.error("Expected game state is {}, actual {}", expected, game.getState());
             return true;
@@ -28,12 +28,16 @@ public class Validator {
         return sender.equals(game.getOpponent());
     }
 
-    private boolean isMessageFromMyself(String sender) {
+    public boolean isMessageFromMyself(String sender) {
         return sender.equals(myself);
     }
 
     public boolean isNotValid(GameState expected, String sender) {
         return isMessageFromMyself(sender) || isIncorrectState(expected);
+    }
+
+    public boolean isNotValid(String sender) {
+        return isMessageFromMyself(sender);
     }
 
 }

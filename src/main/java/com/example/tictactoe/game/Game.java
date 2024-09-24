@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 
 import static com.example.tictactoe.game.MoveType.O;
@@ -24,7 +25,7 @@ public class Game {
     private GameState previousState;
     private String opponent;
     private MoveType moveType;
-    private final List<MoveMadeEvent> moves = new ArrayList<>();
+    private List<MoveMadeEvent> moves = new ArrayList<>();
 
     public Game() {
         FIELD = new GameField(3, 3);
@@ -39,6 +40,13 @@ public class Game {
         state = GameState.SEARCHING_FOR_THE_OPPONENT;
         previousState = GameState.SEARCHING_FOR_THE_OPPONENT;
         moves.clear();
+    }
+
+    public MoveMadeEvent getLastMove() {
+        if (moves.isEmpty()) {
+            return null;
+        }
+        return moves.get(moves.size() - 1);
     }
 
     public void setState(GameState state) {
