@@ -141,13 +141,9 @@ class EventProcessorTest {
 
     @Test
     void startsGameIfMoveTypeIsApproved() throws InterruptedException {
-        PlayRequest playRequest = new PlayRequest(opponent);
-        sender.send(playRequest);
-
-        PlayRequestAcceptedEvent requestAccepted = new PlayRequestAcceptedEvent(opponent);
-        sender.send(requestAccepted);
-
         game.setMoveType(O);
+        game.setOpponent(opponent);
+        game.setState(CHOOSING_MOVE_TYPE);
 
         MoveTypeApprovedEvent approvedEvent = new MoveTypeApprovedEvent(opponent, O);
         sender.send(approvedEvent);

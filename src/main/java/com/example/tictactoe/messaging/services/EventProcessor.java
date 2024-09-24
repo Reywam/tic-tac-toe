@@ -20,11 +20,11 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.example.tictactoe.game.GameState.*;
 import static com.example.tictactoe.messaging.services.RecoveryService.findAppropriateMoveType;
-import static com.example.tictactoe.game.GameState.OPPONENT_FOUND;
-import static com.example.tictactoe.game.GameState.SEARCHING_FOR_THE_OPPONENT;
 import static com.example.tictactoe.game.MoveType.O;
 import static com.example.tictactoe.game.MoveType.X;
+import static com.example.tictactoe.messaging.services.RecoveryService.findLatestAppropriateState;
 
 @Slf4j
 @Service
@@ -131,12 +131,16 @@ public class EventProcessor {
         }
 
         game.rollbackState();
-        continueGame();
+        if (game.getState() != IS_OVER) {
+            continueGame();
+        }
     }
 
     private void makeMove() {
-        Coordinates coordinates = game.getFreeSpaceToMakeMove();
-        sender.send(new MoveApprovalRequest(myself, game.getMoveType(), coordinates));
+        if (game.getState() != IS_OVER) {
+            Coordinates coordinates = game.getFreeSpaceToMakeMove();
+            sender.send(new MoveApprovalRequest(myself, game.getMoveType(), coordinates));
+        }
     }
 
     private void continueGame() {
@@ -255,6 +259,10 @@ public class EventProcessor {
             return;
         }
 
+        if (gameIsNotReadyYet()) {
+            return;
+        }
+
         if (validator.isIncorrectState(GameState.IN_PROGRESS)) {
             return;
         }
@@ -310,7 +318,8 @@ public class EventProcessor {
         } else {
             log.info("State is not consistent. Trying to recover health state");
             List<MoveMadeEvent> validMoves = defineValidMoves(event.getMoves());
-            recoveryService.acceptState(event.getSender(), event.getState(), event.getType(), validMoves);
+            MoveType validMoveType = findAppropriateMoveType(event.getType());
+            recoveryService.acceptState(event.getSender(), event.getState(), validMoveType, validMoves);
         }
 
         sender.send(new ConsistencyCheckResponse(myself
@@ -326,15 +335,16 @@ public class EventProcessor {
             return;
         }
 
-        if (event.isConsistent()) {
-            log.info("Opponent state is consistent, continue game");
-        } else {
+        if (!event.isConsistent()) {
             log.info("Opponent state is not consistent, restoring consistency");
             game.restart();
 
             MoveType moveType = findAppropriateMoveType(event.getMoveType());
-
-            recoveryService.acceptState(event.getSender(), event.getState(), moveType, event.getMoves());
+            GameState state = findLatestAppropriateState(game.getState(), event.getState());
+            recoveryService.acceptState(event.getSender()
+                    , state
+                    , moveType
+                    , event.getMoves());
             log.info("State is aligned with the opponent. Continue game");
         }
 

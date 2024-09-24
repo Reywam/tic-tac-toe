@@ -27,14 +27,14 @@ public class RecoveryService {
     }
 
     public void acceptState(String opponent
-            , GameState opponentState
-            , MoveType opponentMoveType
-            , List<MoveMadeEvent> opponentMoves) {
+            , GameState state
+            , MoveType moveType
+            , List<MoveMadeEvent> moves) {
         game.restart();
         game.setOpponent(opponent);
-        game.setState(findLatestAppropriateState(game.getState(), opponentState));
-        game.setMoveType(findAppropriateMoveType(opponentMoveType));
-        game.setMoves(opponentMoves);
+        game.setState(state);
+        game.setMoveType(moveType);
+        game.setMoves(moves);
         game.getMoves().forEach(move -> {
             game.getField().put(move.getMoveType(), move.getCoordinates());
         });
