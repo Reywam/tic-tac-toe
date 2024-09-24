@@ -34,6 +34,10 @@ public class Utils {
     }
 
     public static void continueGame(Game game, MessageSender messageSender, String sender) {
+        if (game.getState() == IS_OVER) {
+            return;
+        }
+
         MoveMadeEvent lastMove = game.getLastMove();
         if (lastMove == null) {
             if (game.getMoveType() == X) {

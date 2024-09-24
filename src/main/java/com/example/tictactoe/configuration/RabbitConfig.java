@@ -4,6 +4,7 @@ import org.springframework.amqp.core.*;
 import org.springframework.amqp.support.converter.DefaultClassMapper;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,12 +22,23 @@ public class RabbitConfig {
     }
 
     @Bean
-    public Queue queue() {
-        return new Queue(queuePrefix + "-queue", false);
+    public Queue firstQueue() {
+        return new Queue("ttt-0", false, false, true);
     }
 
     @Bean
-    public Binding binding(FanoutExchange fanout, Queue queue) {
+    public Queue secondQueue() {
+        return new Queue("ttt-1", false, false, true);
+    }
+
+
+    @Bean
+    public Binding firstBinding(FanoutExchange fanout, @Qualifier("firstQueue") Queue queue) {
+        return BindingBuilder.bind(queue).to(fanout);
+    }
+
+    @Bean
+    public Binding secondBinding(FanoutExchange fanout, @Qualifier("secondQueue") Queue queue) {
         return BindingBuilder.bind(queue).to(fanout);
     }
 

@@ -19,6 +19,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 import static com.example.tictactoe.Utils.*;
 import static com.example.tictactoe.game.GameState.*;
@@ -29,7 +30,7 @@ import static com.example.tictactoe.messaging.services.RecoveryService.findLates
 
 @Slf4j
 @Service
-@RabbitListener(queues = "#{queue.name}")
+@RabbitListener(queues = "${spring.application.name}")
 @RequiredArgsConstructor
 public class EventProcessor {
     private final Game game;
@@ -40,6 +41,9 @@ public class EventProcessor {
     private final MessageSender sender;
     private final Validator validator;
     private final RecoveryService recoveryService;
+    private final HealthCheckService healthCheckService;
+
+    private CountDownLatch countDownLatch = new CountDownLatch(1);
 
     @EventListener(ApplicationReadyEvent.class)
     public void start() {
@@ -52,6 +56,13 @@ public class EventProcessor {
     public void receive(PlayRequest event) {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
+        }
+
+        log.info("Received event {}", event);
+
+        healthCheckService.refresh();
+        if (game.getState() == INCONSISTENT) {
+            game.rollbackState();
         }
 
         if (validator.isIncorrectState(SEARCHING_FOR_THE_OPPONENT)) {
@@ -67,13 +78,16 @@ public class EventProcessor {
 
         log.info("{} received play game request from {}", myself, event.getSender());
         sender.send(new PlayRequestAcceptedEvent(myself));
+        countDownLatch.countDown();
     }
 
     @RabbitHandler
-    public void receive(PlayRequestAcceptedEvent event) {
+    public void receive(PlayRequestAcceptedEvent event) throws InterruptedException {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
+
+        log.info("Received event {}", event);
 
         if (validator.isIncorrectState(SEARCHING_FOR_THE_OPPONENT)) {
             return;
@@ -95,11 +109,13 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveTypeApprovalRequest event) {
+    public void receive(MoveTypeApprovalRequest event) throws InterruptedException {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
 
+        countDownLatch.await();
+        log.info("Received event {}", event);
         if (validator.isIncorrectState(GameState.CHOOSING_MOVE_TYPE)) {
             return;
         }
@@ -118,7 +134,7 @@ public class EventProcessor {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
-
+        log.info("Received event {}", event);
         if (validator.isIncorrectState(GameState.CHOOSING_MOVE_TYPE)) {
             return;
         }
@@ -133,7 +149,7 @@ public class EventProcessor {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
-
+        log.info("Received event {}", event);
         if (validator.isIncorrectState(GameState.CHOOSING_MOVE_TYPE)) {
             return;
         }
@@ -157,7 +173,7 @@ public class EventProcessor {
                 || validator.isIncorrectState(GameState.IN_PROGRESS)) {
             return;
         }
-
+        log.info("Received event {}", event);
         if (game.getMoves().isEmpty()) {
             sender.send(new MoveApprovedEvent(myself, event.getMoveType(), event.getCoordinates()));
             log.info("Move of {} to {} is approved", event.getSender(), event.getCoordinates());
@@ -183,7 +199,7 @@ public class EventProcessor {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
-
+        log.info("Received event {}", event);
         log.info("Received consistency check request");
 
         boolean stateIsConsistent = game.getState() == event.getState();
@@ -211,7 +227,7 @@ public class EventProcessor {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
-
+        log.info("Received event {}", event);
         if (!event.isConsistent()) {
             log.info("Opponent state is not consistent, restoring consistency");
             game.restart();
@@ -233,7 +249,7 @@ public class EventProcessor {
         if (validator.isMessageFromMyself(event.getSender()) || validator.isIncorrectState(GameState.IN_PROGRESS)) {
             return;
         }
-
+        log.info("Received event {}", event);
         /*
           We can make invalid move only if our internal state is not consistent
           => we need to align our state with the opponent
@@ -248,7 +264,7 @@ public class EventProcessor {
         if (validator.isMessageFromMyself(event.getSender()) || validator.gameIsNotReadyYet()) {
             return;
         }
-
+        log.info("Received event {}", event);
         if (validator.isIncorrectState(GameState.IN_PROGRESS)) {
             sendConsistencyCheck(sender, myself, game);
             return;
@@ -268,7 +284,7 @@ public class EventProcessor {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
-
+        log.info("Received event {}", event);
         if (validator.gameIsNotReadyYet()) {
             log.error("Seems like some old events received. Ignoring");
             return;
@@ -298,7 +314,7 @@ public class EventProcessor {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
-
+        log.info("Received event {}", event);
         if (validator.gameIsNotReadyYet()) {
             log.error("Seems like some old events received. Ignoring");
             return;
@@ -325,7 +341,7 @@ public class EventProcessor {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
-
+        log.info("Received event {}", event);
         sender.send(new GameStateProvidedEvent(myself, game.getState(), game.getMoveType(), game.getMoves()));
     }
 
@@ -334,7 +350,7 @@ public class EventProcessor {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
-
+        log.info("Received event {}", event);
         if (validator.isIncorrectState(GameState.CHECKING_OPPONENT_STATE)) {
             log.error("Received game state but it was not requested");
             return;
@@ -356,6 +372,7 @@ public class EventProcessor {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
+        log.info("Received event {}", event);
 
         MoveType expectedMoveType = event.getType() == X ? O : X;
         boolean movesAreConsistent = game.getMoves().equals(event.getMoves());
@@ -377,7 +394,7 @@ public class EventProcessor {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
-
+        log.info("Received event {}", event);
         game.rollbackState();
         if (game.getState() != IS_OVER) {
             continueGame(game, sender, myself);
@@ -389,8 +406,16 @@ public class EventProcessor {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
-
+        log.info("Received event {}", event);
         makeMove(game, sender, myself);
+    }
+
+    @RabbitHandler
+    public void receive(AliveEvent event) {
+        if (event.getSender().equals(myself)) {
+            return;
+        }
+        healthCheckService.refresh();
     }
 
     private void requestForTheOpponentState() {

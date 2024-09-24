@@ -35,7 +35,7 @@ import static org.mockito.Mockito.*;
 class EventProcessorTest {
     @Container
     static final RabbitMQContainer rabbitmq =
-            new RabbitMQContainer(DockerImageName.parse("rabbitmq:3-management-alpine"));
+            new RabbitMQContainer(DockerImageName.parse("rabbitmq:3-alpine"));
 
     @DynamicPropertySource
     static void overridePropertiesInternal(DynamicPropertyRegistry registry) {
