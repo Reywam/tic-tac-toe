@@ -1,4 +1,4 @@
-package com.example.tictactoe.messaging.sender;
+package com.example.tictactoe.messaging.services;
 
 import com.example.tictactoe.game.Game;
 import com.example.tictactoe.game.GameState;

@@ -1,14 +1,13 @@
-package com.example.tictactoe.messaging;
+package com.example.tictactoe.messaging.services;
 
-import com.example.tictactoe.RecoveryService;
 import com.example.tictactoe.game.Coordinates;
 import com.example.tictactoe.game.Game;
 import com.example.tictactoe.game.GameState;
 import com.example.tictactoe.game.MoveType;
+import com.example.tictactoe.messaging.Validator;
 import com.example.tictactoe.messaging.event.*;
 import com.example.tictactoe.messaging.request.*;
 import com.example.tictactoe.messaging.request.RecoveryRequest;
-import com.example.tictactoe.messaging.sender.MessageSender;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitHandler;
@@ -21,7 +20,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.example.tictactoe.RecoveryService.findAppropriateMoveType;
+import static com.example.tictactoe.messaging.services.RecoveryService.findAppropriateMoveType;
 import static com.example.tictactoe.game.GameState.OPPONENT_FOUND;
 import static com.example.tictactoe.game.GameState.SEARCHING_FOR_THE_OPPONENT;
 import static com.example.tictactoe.game.MoveType.O;
