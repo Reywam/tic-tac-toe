@@ -24,20 +24,15 @@ public class Validator {
         return false;
     }
 
-    private boolean isFromOpponent(String sender) {
-        return sender.equals(game.getOpponent());
-    }
-
     public boolean isMessageFromMyself(String sender) {
         return sender.equals(myself);
     }
 
-    public boolean isNotValid(GameState expected, String sender) {
-        return isMessageFromMyself(sender) || isIncorrectState(expected);
+    public boolean gameIsNotReadyYet() {
+        if (game.getState().compareTo(GameState.IN_PROGRESS) < 0) {
+            log.error("Game is not ready to accept play events yet");
+            return true;
+        }
+        return false;
     }
-
-    public boolean isNotValid(String sender) {
-        return isMessageFromMyself(sender);
-    }
-
 }
