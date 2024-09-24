@@ -1,18 +1,19 @@
 package com.example.tictactoe.messaging.event;
 
 import com.example.tictactoe.game.GameState;
+import com.example.tictactoe.game.MoveType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.io.Serializable;
 import java.util.List;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class GameStateProvidedEvent implements Serializable {
+public class GameStateProvidedEvent {
     private String sender;
     private GameState state;
+    private MoveType moveType;
     private List<MoveMadeEvent> moves;
 }

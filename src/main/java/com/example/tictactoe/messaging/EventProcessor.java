@@ -1,5 +1,6 @@
 package com.example.tictactoe.messaging;
 
+import com.example.tictactoe.RecoveryService;
 import com.example.tictactoe.game.Coordinates;
 import com.example.tictactoe.game.Game;
 import com.example.tictactoe.game.GameState;
@@ -20,6 +21,9 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.example.tictactoe.RecoveryService.findAppropriateMoveType;
+import static com.example.tictactoe.game.GameState.OPPONENT_FOUND;
+import static com.example.tictactoe.game.GameState.SEARCHING_FOR_THE_OPPONENT;
 import static com.example.tictactoe.game.MoveType.O;
 import static com.example.tictactoe.game.MoveType.X;
 
@@ -35,12 +39,18 @@ public class EventProcessor {
 
     private final MessageSender sender;
     private final Validator validator;
+    private final RecoveryService recoveryService;
 
     @EventListener(ApplicationReadyEvent.class)
     public void start() {
         log.info("{} is started and ready to play. Sending play request", myself);
         sender.send(new PlayRequest(myself));
-        game.setState(GameState.SEARCHING_FOR_THE_OPPONENT);
+        game.setState(SEARCHING_FOR_THE_OPPONENT);
+    }
+
+    private void requestForTheOpponentState() {
+        sender.send(new GameStateRequest(myself));
+        game.setState(GameState.CHECKING_OPPONENT_STATE);
     }
 
     @RabbitHandler
@@ -49,10 +59,9 @@ public class EventProcessor {
             return;
         }
 
-        if (validator.isIncorrectState(GameState.SEARCHING_FOR_THE_OPPONENT)) {
+        if (validator.isIncorrectState(SEARCHING_FOR_THE_OPPONENT)) {
             log.info("Received play request even if not expected. Check opponent state");
-            sender.send(new RecoveryRequest(myself, game.getState(), game.getMoveType(), game.getMoves()));
-            game.setState(GameState.WAITING_FOR_THE_OPPONENT_TO_RECOVER);
+            requestForTheOpponentState();
             return;
         }
 
@@ -65,11 +74,35 @@ public class EventProcessor {
         sender.send(new PlayRequestAcceptedEvent(myself));
     }
 
-    private void recoverState(MoveType moveType, GameState state, List<MoveMadeEvent> moves) {
-        game.setMoveType(moveType);
-        game.setState(state);
-        game.setMoves(moves);
-        game.getMoves().forEach(move -> game.getField().put(move.getMoveType(), move.getCoordinates()));
+    @RabbitHandler
+    public void receive(GameStateRequest event) {
+        if (validator.isMessageFromMyself(event.getSender())) {
+            return;
+        }
+
+        sender.send(new GameStateProvidedEvent(myself, game.getState(), game.getMoveType(), game.getMoves()));
+    }
+
+    @RabbitHandler
+    public void receive(GameStateProvidedEvent event) {
+        if (validator.isMessageFromMyself(event.getSender())) {
+            return;
+        }
+
+        if (validator.isIncorrectState(GameState.CHECKING_OPPONENT_STATE)) {
+            log.error("Received game state but it was not requested");
+            return;
+        }
+
+        game.rollbackState();
+        boolean opponentJustStarted = event.getState() == SEARCHING_FOR_THE_OPPONENT;
+        if (opponentJustStarted) {
+            log.info("Seems like the opponent just started. Sending recovery request to the opponent");
+            sender.send(new RecoveryRequest(myself, game.getState(), game.getMoveType(), game.getMoves()));
+        } else {
+            log.info("Received unexpected request from the opponent. Performing consistency check");
+            sendConsistencyCheck();
+        }
     }
 
     @RabbitHandler
@@ -83,7 +116,7 @@ public class EventProcessor {
                 || game.getState().equals(event.getState())
                 || game.getMoveType() == expectedMoveType)) {
             log.info("State is inconsistent. Recovering");
-            recoverState(expectedMoveType, event.getState(), event.getMoves());
+            recoveryService.acceptState(event.getSender(), event.getState(), expectedMoveType, event.getMoves());
             log.info("State is recovered");
         } else {
             log.info("State is consistent already");
@@ -109,6 +142,15 @@ public class EventProcessor {
 
     private void continueGame() {
         MoveMadeEvent lastMove = game.getLastMove();
+        if (lastMove == null) {
+            if (game.getMoveType() == X) {
+                makeMove();
+            } else {
+                sender.send(new MakeMoveRequest(myself));
+            }
+            return;
+        }
+
         if (!lastMove.getSender().equals(myself)) {
             log.info("Last move is not mine, making move");
             makeMove();
@@ -129,7 +171,11 @@ public class EventProcessor {
 
     @RabbitHandler
     public void receive(PlayRequestAcceptedEvent event) {
-        if (validator.isNotValid(GameState.SEARCHING_FOR_THE_OPPONENT, event.getSender())) {
+        if (validator.isMessageFromMyself(event.getSender())) {
+            return;
+        }
+
+        if (validator.isIncorrectState(SEARCHING_FOR_THE_OPPONENT)) {
             return;
         }
 
@@ -139,7 +185,7 @@ public class EventProcessor {
         }
 
         game.setOpponent(event.getSender());
-        game.setState(GameState.OPPONENT_FOUND);
+        game.setState(OPPONENT_FOUND);
 
         log.info("{} accepted play request. Starting game", event.getSender());
 
@@ -150,7 +196,11 @@ public class EventProcessor {
 
     @RabbitHandler
     public void receive(MoveTypeApprovalRequest event) {
-        if (validator.isNotValid(GameState.CHOOSING_MOVE_TYPE, event.getSender())) {
+        if (validator.isMessageFromMyself(event.getSender())) {
+            return;
+        }
+
+        if (validator.isIncorrectState(GameState.CHOOSING_MOVE_TYPE)) {
             return;
         }
 
@@ -165,7 +215,11 @@ public class EventProcessor {
 
     @RabbitHandler
     public void receive(MoveTypeRejectedEvent event) {
-        if (validator.isNotValid(GameState.CHOOSING_MOVE_TYPE, event.getSender())) {
+        if (validator.isMessageFromMyself(event.getSender())) {
+            return;
+        }
+
+        if (validator.isIncorrectState(GameState.CHOOSING_MOVE_TYPE)) {
             return;
         }
 
@@ -176,7 +230,11 @@ public class EventProcessor {
 
     @RabbitHandler
     public void receive(MoveTypeApprovedEvent event) {
-        if (validator.isNotValid(GameState.CHOOSING_MOVE_TYPE, event.getSender())) {
+        if (validator.isMessageFromMyself(event.getSender())) {
+            return;
+        }
+
+        if (validator.isIncorrectState(GameState.CHOOSING_MOVE_TYPE)) {
             return;
         }
 
@@ -194,7 +252,11 @@ public class EventProcessor {
 
     @RabbitHandler
     public void receive(MoveApprovalRequest event) {
-        if (validator.isNotValid(GameState.IN_PROGRESS, event.getSender())) {
+        if (validator.isMessageFromMyself(event.getSender())) {
+            return;
+        }
+
+        if (validator.isIncorrectState(GameState.IN_PROGRESS)) {
             return;
         }
 
@@ -205,7 +267,7 @@ public class EventProcessor {
         }
 
         MoveMadeEvent lastMoveMade = game.getMoves().get(game.getMoves().size() - 1);
-        boolean lastMoveIsMine = lastMoveMade.getMoveType().equals(game.getMoveType().name());
+        boolean lastMoveIsMine = lastMoveMade.getMoveType().equals(game.getMoveType());
 
         if (lastMoveIsMine && game.isSpaceFreeToMove(event.getCoordinates())) {
             log.info("Move of {} to {} is approved", event.getSender(), event.getCoordinates());
@@ -215,14 +277,6 @@ public class EventProcessor {
 
         sender.send(new MoveRejectedEvent(myself, event.getMoveType(), event.getCoordinates()));
         log.info("Rejected move of {} to {}", event.getSender(), event.getCoordinates());
-    }
-
-    private GameState findLatestAppropriateState(GameState lastState, GameState lastOpponentState) {
-        return lastState.compareTo(lastOpponentState) < 0 ? lastState : lastOpponentState;
-    }
-
-    private MoveType findAppropriateMoveType(MoveType opponentMoveType) {
-        return opponentMoveType == X ? O : X;
     }
 
     private List<MoveMadeEvent> defineValidMoves(List<MoveMadeEvent> opponentMoves) {
@@ -257,15 +311,7 @@ public class EventProcessor {
         } else {
             log.info("State is not consistent. Trying to recover health state");
             List<MoveMadeEvent> validMoves = defineValidMoves(event.getMoves());
-
-            game.restart();
-            game.setOpponent(event.getSender());
-            game.setState(findLatestAppropriateState(game.getState(), event.getState()));
-            game.setMoveType(findAppropriateMoveType(event.getType()));
-            game.setMoves(validMoves);
-            game.getMoves().forEach(move -> {
-                game.getField().put(move.getMoveType(), move.getCoordinates());
-            });
+            recoveryService.acceptState(event.getSender(), event.getState(), event.getType(), validMoves);
         }
 
         sender.send(new ConsistencyCheckResponse(myself
@@ -286,13 +332,10 @@ public class EventProcessor {
         } else {
             log.info("Opponent state is not consistent, restoring consistency");
             game.restart();
-            game.setOpponent(event.getSender());
-            game.setState(event.getState());
-            game.setMoveType(findAppropriateMoveType(event.getMoveType()));
-            game.setMoves(event.getMoves());
-            game.getMoves().forEach(move -> {
-                game.getField().put(move.getMoveType(), move.getCoordinates());
-            });
+
+            MoveType moveType = findAppropriateMoveType(event.getMoveType());
+
+            recoveryService.acceptState(event.getSender(), event.getState(), moveType, event.getMoves());
             log.info("State is aligned with the opponent. Continue game");
         }
 
@@ -301,7 +344,11 @@ public class EventProcessor {
 
     @RabbitHandler
     public void receive(MoveRejectedEvent event) {
-        if (validator.isNotValid(GameState.IN_PROGRESS, event.getSender())) {
+        if (validator.isMessageFromMyself(event.getSender())) {
+            return;
+        }
+
+        if (validator.isIncorrectState(GameState.IN_PROGRESS)) {
             return;
         }
 
@@ -317,10 +364,22 @@ public class EventProcessor {
         sender.send(new ConsistencyCheckRequest(myself, game.getState(), game.getMoveType(), game.getMoves()));
     }
 
+    private boolean gameIsNotReadyYet() {
+        if (game.getState().compareTo(GameState.IN_PROGRESS) < 0) {
+            log.error("Game is not ready to accept play events yet");
+            return true;
+        }
+        return false;
+    }
+
     @RabbitHandler
     public void receive(MoveApprovedEvent event) throws InterruptedException {
         Thread.sleep(3000);
         if (validator.isMessageFromMyself(event.getSender())) {
+            return;
+        }
+
+        if (gameIsNotReadyYet()) {
             return;
         }
 
@@ -341,6 +400,11 @@ public class EventProcessor {
     @RabbitHandler
     public void receive(MoveMadeEvent event) {
         if (validator.isMessageFromMyself(event.getSender())) {
+            return;
+        }
+
+        if (gameIsNotReadyYet()) {
+            log.error("Seems like some old events received. Ignoring");
             return;
         }
 
@@ -366,6 +430,11 @@ public class EventProcessor {
     @RabbitHandler
     public void receive(GameIsOverEvent event) {
         if (validator.isMessageFromMyself(event.getSender())) {
+            return;
+        }
+
+        if (gameIsNotReadyYet()) {
+            log.error("Seems like some old events received. Ignoring");
             return;
         }
 
