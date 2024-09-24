@@ -1,7 +1,9 @@
 package com.example.tictactoe.messaging.services;
 
+import com.example.tictactoe.Utils;
 import com.example.tictactoe.game.Game;
 import com.example.tictactoe.game.GameState;
+import com.example.tictactoe.game.MoveType;
 import com.rabbitmq.client.ShutdownSignalException;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -10,12 +12,17 @@ import org.springframework.amqp.core.FanoutExchange;
 import org.springframework.amqp.rabbit.connection.Connection;
 import org.springframework.amqp.rabbit.connection.ConnectionListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import static com.example.tictactoe.Utils.*;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class MessageSender {
+    @Value("${spring.application.name}")
+    private String myself;
     private final RabbitTemplate template;
     private final FanoutExchange exchange;
     private final Game game;
@@ -27,6 +34,9 @@ public class MessageSender {
             public void onCreate(Connection connection) {
                 if (game.getState() == GameState.INCONSISTENT) {
                     game.rollbackState();
+                    if (game.getMoveType() == MoveType.X) {
+                        sendConsistencyCheck(MessageSender.this, myself, game);
+                    }
                 }
             }
 

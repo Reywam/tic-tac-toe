@@ -1,6 +1,6 @@
 package com.example.tictactoe.messaging.services;
 
-import com.example.tictactoe.DataHelper;
+import com.example.tictactoe.Utils;
 import com.example.tictactoe.game.Coordinates;
 import com.example.tictactoe.game.Game;
 import com.example.tictactoe.game.GameState;
@@ -18,9 +18,9 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
+import static com.example.tictactoe.Utils.*;
 import static com.example.tictactoe.game.GameState.*;
 import static com.example.tictactoe.messaging.services.RecoveryService.findAppropriateMoveType;
 import static com.example.tictactoe.game.MoveType.O;
@@ -193,7 +193,7 @@ public class EventProcessor {
 
         if (!(stateIsConsistent && movesAreConsistent && moveTypeIsConsistent)) {
             log.info("State is not consistent. Trying to recover health state");
-            List<MoveMadeEvent> validMoves = DataHelper.defineValidMoves(game.getMoves(), event.getMoves());
+            List<MoveMadeEvent> validMoves = Utils.defineValidMoves(game.getMoves(), event.getMoves());
             MoveType validMoveType = findAppropriateMoveType(event.getType());
             recoveryService.acceptState(event.getSender(), event.getState(), validMoveType, validMoves);
             isConsistent = false;
@@ -225,7 +225,7 @@ public class EventProcessor {
             log.info("State is aligned with the opponent. Continue game");
         }
 
-        continueGame();
+        continueGame(game, sender, myself);
     }
 
     @RabbitHandler
@@ -239,7 +239,7 @@ public class EventProcessor {
           => we need to align our state with the opponent
          */
         log.info("Move to {} was rejected by {}", event.getCoordinates(), event.getSender());
-        sendConsistencyCheck();
+        sendConsistencyCheck(sender, myself, game);
     }
 
     @RabbitHandler
@@ -250,7 +250,7 @@ public class EventProcessor {
         }
 
         if (validator.isIncorrectState(GameState.IN_PROGRESS)) {
-            sendConsistencyCheck();
+            sendConsistencyCheck(sender, myself, game);
             return;
         }
 
@@ -275,7 +275,7 @@ public class EventProcessor {
         }
 
         if (validator.isIncorrectState(GameState.IN_PROGRESS)) {
-            sendConsistencyCheck();
+            sendConsistencyCheck(sender, myself, game);
             return;
         }
 
@@ -305,13 +305,13 @@ public class EventProcessor {
         }
 
         if (validator.isIncorrectState(GameState.IN_PROGRESS)) {
-            sendConsistencyCheck();
+            sendConsistencyCheck(sender, myself, game);
             return;
         }
 
         if (!game.isOver()) {
             log.error("Game is not over on the side of {}", myself);
-            sendConsistencyCheck();
+            sendConsistencyCheck(sender, myself, game);
             game.setState(GameState.INCONSISTENT);
             return;
         }
@@ -347,7 +347,7 @@ public class EventProcessor {
             sender.send(new RecoveryRequest(myself, game.getState(), game.getMoveType(), game.getMoves()));
         } else {
             log.info("Received unexpected request from the opponent. Performing consistency check");
-            sendConsistencyCheck();
+            sendConsistencyCheck(sender, myself, game);
         }
     }
 
@@ -380,7 +380,7 @@ public class EventProcessor {
 
         game.rollbackState();
         if (game.getState() != IS_OVER) {
-            continueGame();
+            continueGame(game, sender, myself);
         }
     }
 
@@ -390,38 +390,7 @@ public class EventProcessor {
             return;
         }
 
-        makeMove();
-    }
-
-    private void sendConsistencyCheck() {
-        sender.send(new ConsistencyCheckRequest(myself, game.getState(), game.getMoveType(), game.getMoves()));
-    }
-
-    private void makeMove() {
-        if (game.getState() != IS_OVER) {
-            Coordinates coordinates = game.getFreeSpaceToMakeMove();
-            sender.send(new MoveApprovalRequest(myself, game.getMoveType(), coordinates));
-        }
-    }
-
-    private void continueGame() {
-        MoveMadeEvent lastMove = game.getLastMove();
-        if (lastMove == null) {
-            if (game.getMoveType() == X) {
-                makeMove();
-            } else {
-                sender.send(new MakeMoveRequest(myself));
-            }
-            return;
-        }
-
-        if (!lastMove.getSender().equals(myself)) {
-            log.info("Last move is not mine, making move");
-            makeMove();
-        } else {
-            log.info("Last move is mine, asking opponent to move");
-            sender.send(new MakeMoveRequest(myself));
-        }
+        makeMove(game, sender, myself);
     }
 
     private void requestForTheOpponentState() {

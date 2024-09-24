@@ -16,13 +16,13 @@ public class RabbitConfig {
     @Bean
     public FanoutExchange fanoutExchange() {
         return ExchangeBuilder.fanoutExchange("eventExchange")
-                .durable(true)
+                .durable(false)
                 .build();
     }
 
     @Bean
     public Queue queue() {
-        return new Queue(queuePrefix + "-queue");
+        return new Queue(queuePrefix + "-queue", false);
     }
 
     @Bean
