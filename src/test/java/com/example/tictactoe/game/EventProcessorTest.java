@@ -1,9 +1,7 @@
 package com.example.tictactoe.game;
 
 import com.example.tictactoe.messaging.event.*;
-import com.example.tictactoe.messaging.request.MoveApprovalRequest;
-import com.example.tictactoe.messaging.request.MoveTypeApprovalRequest;
-import com.example.tictactoe.messaging.request.PlayRequest;
+import com.example.tictactoe.messaging.request.*;
 import com.example.tictactoe.messaging.sender.MessageSender;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +23,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.containers.RabbitMQContainer;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.example.tictactoe.game.GameState.*;
@@ -62,6 +62,8 @@ class EventProcessorTest {
     private String myself;
     private String opponent = "opponent";
 
+    Coordinates targetCoordinates = new Coordinates(0, 0);
+
     @BeforeEach
     void beforeEach() {
         game.restart();
@@ -82,7 +84,7 @@ class EventProcessorTest {
 
         Thread.sleep(1000);
 
-        Mockito.verify(template).convertAndSend(exchange.getName(), "",  new PlayRequestAcceptedEvent(myself));
+        Mockito.verify(template).convertAndSend(exchange.getName(), "", new PlayRequestAcceptedEvent(myself));
     }
 
 
@@ -96,7 +98,7 @@ class EventProcessorTest {
         assertEquals(opponent, game.getOpponent());
         assertEquals(GameState.OPPONENT_FOUND, game.getPreviousState());
         assertEquals(CHOOSING_MOVE_TYPE, game.getState());
-        Mockito.verify(template).convertAndSend(exchange.getName(), "",  new MoveTypeApprovalRequest(myself, game.getMoveType().name()));
+        Mockito.verify(template).convertAndSend(exchange.getName(), "", new MoveTypeApprovalRequest(myself, game.getMoveType()));
     }
 
     @Test
@@ -105,12 +107,12 @@ class EventProcessorTest {
         game.setOpponent(opponent);
         game.setState(CHOOSING_MOVE_TYPE);
 
-        MoveTypeApprovalRequest approvalRequest = new MoveTypeApprovalRequest(opponent, O.name());
+        MoveTypeApprovalRequest approvalRequest = new MoveTypeApprovalRequest(opponent, O);
         sender.send(approvalRequest);
 
         Thread.sleep(1000);
 
-        Mockito.verify(template).convertAndSend(exchange.getName(), "",  new MoveTypeApprovedEvent(myself, O.name()));
+        Mockito.verify(template).convertAndSend(exchange.getName(), "", new MoveTypeApprovedEvent(myself, O));
     }
 
     @Test
@@ -119,12 +121,12 @@ class EventProcessorTest {
         game.setOpponent(opponent);
         game.setState(CHOOSING_MOVE_TYPE);
 
-        MoveTypeApprovalRequest approvalRequest = new MoveTypeApprovalRequest(opponent, O.name());
+        MoveTypeApprovalRequest approvalRequest = new MoveTypeApprovalRequest(opponent, O);
         sender.send(approvalRequest);
 
         Thread.sleep(1000);
 
-        Mockito.verify(template, times(1)).convertAndSend(exchange.getName(), "",  new MoveTypeRejectedEvent(myself, O.name()));
+        Mockito.verify(template, times(1)).convertAndSend(exchange.getName(), "", new MoveTypeRejectedEvent(myself, O));
     }
 
     @Test
@@ -133,12 +135,12 @@ class EventProcessorTest {
         game.setOpponent(opponent);
         game.setState(CHOOSING_MOVE_TYPE);
 
-        MoveTypeRejectedEvent rejectedEvent = new MoveTypeRejectedEvent(opponent, O.name());
+        MoveTypeRejectedEvent rejectedEvent = new MoveTypeRejectedEvent(opponent, O);
         sender.send(rejectedEvent);
 
         Thread.sleep(1000);
         Mockito.verify(template, times(1))
-                .convertAndSend(exchange.getName(), "",  new MoveTypeApprovalRequest(myself, game.getMoveType().name()));
+                .convertAndSend(exchange.getName(), "", new MoveTypeApprovalRequest(myself, game.getMoveType()));
     }
 
     @Test
@@ -151,7 +153,7 @@ class EventProcessorTest {
 
         game.setMoveType(O);
 
-        MoveTypeApprovedEvent approvedEvent = new MoveTypeApprovedEvent(opponent, O.name());
+        MoveTypeApprovedEvent approvedEvent = new MoveTypeApprovedEvent(opponent, O);
         sender.send(approvedEvent);
 
         await().atMost(10, TimeUnit.SECONDS)
@@ -167,7 +169,7 @@ class EventProcessorTest {
         Coordinates targetCoordinates = new Coordinates(0, 0);
         when(game.getFreeSpaceToMakeMove()).thenReturn(targetCoordinates);
 
-        MoveTypeApprovedEvent approvedEvent = new MoveTypeApprovedEvent(opponent, X.name());
+        MoveTypeApprovedEvent approvedEvent = new MoveTypeApprovedEvent(opponent, X);
         sender.send(approvedEvent);
 
         await().atMost(10, TimeUnit.SECONDS)
@@ -175,7 +177,7 @@ class EventProcessorTest {
 
         Thread.sleep(1000);
         Mockito.verify(template, times(1))
-                .convertAndSend(exchange.getName(), "",  new MoveApprovalRequest(myself, X.name(), targetCoordinates));
+                .convertAndSend(exchange.getName(), "", new MoveApprovalRequest(myself, X, targetCoordinates));
     }
 
     @Test
@@ -186,13 +188,13 @@ class EventProcessorTest {
 
         Coordinates targetCoordinates = new Coordinates(0, 0);
 
-        MoveApprovalRequest approvalRequest = new MoveApprovalRequest(opponent, O.name(), targetCoordinates);
+        MoveApprovalRequest approvalRequest = new MoveApprovalRequest(opponent, O, targetCoordinates);
         sender.send(approvalRequest);
 
         Thread.sleep(1000);
 
         Mockito.verify(template, times(1))
-                .convertAndSend(exchange.getName(), "",  new MoveApprovedEvent(myself, O.name(), targetCoordinates));
+                .convertAndSend(exchange.getName(), "", new MoveApprovedEvent(myself, O, targetCoordinates));
     }
 
     @Test
@@ -203,13 +205,13 @@ class EventProcessorTest {
 
         Coordinates targetCoordinates = new Coordinates(0, 0);
 
-        MoveApprovalRequest approvalRequest = new MoveApprovalRequest(opponent, O.name(), targetCoordinates);
+        MoveApprovalRequest approvalRequest = new MoveApprovalRequest(opponent, O, targetCoordinates);
         sender.send(approvalRequest);
 
         Thread.sleep(1000);
 
         Mockito.verify(template, times(0))
-                .convertAndSend(exchange.getName(), "",  new MoveApprovedEvent(myself, O.name(), targetCoordinates));
+                .convertAndSend(exchange.getName(), "", new MoveApprovedEvent(myself, O, targetCoordinates));
     }
 
     @Test
@@ -220,15 +222,15 @@ class EventProcessorTest {
 
         Coordinates targetCoordinates = new Coordinates(0, 0);
         game.makeMove(X, targetCoordinates);
-        game.getMoves().add(new MoveMadeEvent(myself, X.name(), targetCoordinates));
+        game.getMoves().add(new MoveMadeEvent(myself, X, targetCoordinates));
 
-        MoveApprovalRequest approvalRequest = new MoveApprovalRequest(opponent, O.name(), targetCoordinates);
+        MoveApprovalRequest approvalRequest = new MoveApprovalRequest(opponent, O, targetCoordinates);
         sender.send(approvalRequest);
 
         Thread.sleep(1000);
 
         Mockito.verify(template, times(1))
-                .convertAndSend(exchange.getName(), "",  new MoveRejectedEvent(myself, O.name(), targetCoordinates));
+                .convertAndSend(exchange.getName(), "", new MoveRejectedEvent(myself, O, targetCoordinates));
     }
 
     @Test
@@ -237,17 +239,17 @@ class EventProcessorTest {
         game.setOpponent(opponent);
         game.setState(IN_PROGRESS);
 
-        game.getMoves().add(new MoveMadeEvent(opponent, O.name(), new Coordinates(0, 1)));
+        game.getMoves().add(new MoveMadeEvent(opponent, O, new Coordinates(0, 1)));
 
         Coordinates targetCoordinates = new Coordinates(0, 0);
 
-        MoveApprovalRequest approvalRequest = new MoveApprovalRequest(opponent, O.name(), targetCoordinates);
+        MoveApprovalRequest approvalRequest = new MoveApprovalRequest(opponent, O, targetCoordinates);
         sender.send(approvalRequest);
 
         Thread.sleep(1000);
 
         Mockito.verify(template, times(1))
-                .convertAndSend(exchange.getName(), "",  new MoveRejectedEvent(myself, O.name(), targetCoordinates));
+                .convertAndSend(exchange.getName(), "", new MoveRejectedEvent(myself, O, targetCoordinates));
     }
 
     @Test
@@ -257,14 +259,14 @@ class EventProcessorTest {
         game.setState(IN_PROGRESS);
 
         Coordinates targetCoordinates = new Coordinates(0, 1);
-        MoveApprovedEvent approvedEvent = new MoveApprovedEvent(opponent, X.name(), targetCoordinates);
+        MoveApprovedEvent approvedEvent = new MoveApprovedEvent(opponent, X, targetCoordinates);
         sender.send(approvedEvent);
 
         await().atMost(10, TimeUnit.SECONDS).until(() -> game.getMoves().size() == 1);
         assertFalse(game.isSpaceFreeToMove(targetCoordinates));
 
         Mockito.verify(template, times(1))
-                .convertAndSend(exchange.getName(), "",  new MoveMadeEvent(myself, X.name(), targetCoordinates));
+                .convertAndSend(exchange.getName(), "", new MoveMadeEvent(myself, X, targetCoordinates));
     }
 
     @Test
@@ -274,7 +276,7 @@ class EventProcessorTest {
         game.setState(IN_PROGRESS);
 
         Coordinates targetCoordinates = new Coordinates(0, 1);
-        MoveMadeEvent event = new MoveMadeEvent(opponent, O.name(), targetCoordinates);
+        MoveMadeEvent event = new MoveMadeEvent(opponent, O, targetCoordinates);
 
         assertTrue(game.getMoves().isEmpty());
         sender.send(event);
@@ -337,15 +339,62 @@ class EventProcessorTest {
         game.setMoveType(X);
         game.setOpponent(opponent);
         game.setState(CHOOSING_MOVE_TYPE);
-        Coordinates targetCoordinates = new Coordinates(0, 0);
+
 
         assertTrue(game.getMoves().isEmpty());
 
-        MoveMadeEvent event = new MoveMadeEvent(opponent, O.name(), targetCoordinates);
+        MoveMadeEvent event = new MoveMadeEvent(opponent, O, targetCoordinates);
         sender.send(event);
 
         Thread.sleep(1000);
         assertTrue(game.getMoves().isEmpty());
         assertTrue(game.isSpaceFreeToMove(targetCoordinates));
+    }
+
+    @Test
+    void checkConsistencyOnRejectedMove() throws InterruptedException {
+        game.setMoveType(X);
+        game.setOpponent(opponent);
+        game.setState(IN_PROGRESS);
+
+        MoveRejectedEvent event = new MoveRejectedEvent(opponent, X, targetCoordinates);
+        sender.send(event);
+
+        Thread.sleep(1000);
+
+        Mockito.verify(template, times(1))
+                .convertAndSend(exchange.getName(), "", new ConsistencyCheckRequest(myself
+                        , game.getState()
+                        , X
+                        , game.getMoves()));
+    }
+
+    @Test
+    void restoreConsistencyIfSystemStateIsNotConsistent() throws InterruptedException {
+        MoveMadeEvent m1 = new MoveMadeEvent(myself, X, new Coordinates(0, 0));
+        MoveMadeEvent m2 = new MoveMadeEvent(myself, X, new Coordinates(1, 0));
+        MoveMadeEvent m3 = new MoveMadeEvent(myself, X, new Coordinates(2, 0));
+
+        game.setMoveType(X);
+        game.setOpponent(opponent);
+        game.setState(IN_PROGRESS);
+        List<MoveMadeEvent> myMoves = new ArrayList<>(List.of(m1, m2));
+        game.setMoves(myMoves);
+
+        GameState opponentState = IN_PROGRESS;
+        MoveType opponentMoveType = O;
+        List<MoveMadeEvent> opponentMoves = new ArrayList<>(List.of(m1, m2, m3));
+
+        ConsistencyCheckRequest request = new ConsistencyCheckRequest(opponent, opponentState, opponentMoveType, opponentMoves);
+        sender.send(request);
+
+        Thread.sleep(1000);
+
+        Mockito.verify(template, times(1))
+                .convertAndSend(exchange.getName(), "", new ConsistencyCheckResponse(myself
+                        , game.getState()
+                        , X
+                        , List.of(m1, m2)
+                        , false));
     }
 }

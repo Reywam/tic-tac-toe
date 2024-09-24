@@ -12,6 +12,10 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class InstanceRecoveredEvent {
+public class ConsistencyCheckResponse {
     private String sender;
+    private GameState state;
+    private MoveType moveType;
+    private List<MoveMadeEvent> moves;
+    private boolean isConsistent;
 }

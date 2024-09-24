@@ -61,6 +61,7 @@ public class Game {
     public MoveType defineMoveType() {
         int moveTypeIdx = new Random().nextInt(ALLOWED_MOVE_TYPES.length);
         MoveType type = ALLOWED_MOVE_TYPES[moveTypeIdx];
+        log.info("Defined move type {}", type);
         return type;
     }
 
