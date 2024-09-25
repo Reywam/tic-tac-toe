@@ -2,14 +2,11 @@ package com.example.tictactoe.game;
 
 import com.example.tictactoe.messaging.event.MoveMadeEvent;
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Random;
 
 import static com.example.tictactoe.game.MoveType.O;
@@ -69,6 +66,11 @@ public class Game {
         FIELD.put(move, coordinates);
     }
 
+    public void makeMove(MoveMadeEvent event) {
+        FIELD.put(event.getMoveType(), event.getCoordinates());
+        moves.add(event);
+    }
+
     public GameField getField() {
         return FIELD;
     }
@@ -96,7 +98,7 @@ public class Game {
         return "NOT_DEFINED_YET";
     }
 
-    public boolean isSpaceFreeToMove(Coordinates coordinates) {
+    public boolean spaceIsNotOccupied(Coordinates coordinates) {
         return FIELD.get(coordinates.x(), coordinates.y()) == null;
     }
 

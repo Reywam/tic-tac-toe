@@ -15,5 +15,5 @@ import java.util.List;
 public class RecoveryRequest {
     private String sender;
     private GameState state;
-    private MoveType type;
+    private MoveType moveType;
     private List<MoveMadeEvent> moves;}

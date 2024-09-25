@@ -255,7 +255,7 @@ class EventProcessorTest {
         sender.send(approvedEvent);
 
         await().atMost(10, TimeUnit.SECONDS).until(() -> game.getMoves().size() == 1);
-        assertFalse(game.isSpaceFreeToMove(targetCoordinates));
+        assertFalse(game.spaceIsNotOccupied(targetCoordinates));
 
         Mockito.verify(template, times(1))
                 .convertAndSend(exchange.getName(), "", new MoveMadeEvent(myself, X, targetCoordinates));
@@ -276,7 +276,7 @@ class EventProcessorTest {
         Thread.sleep(1000);
 
         assertEquals(1, game.getMoves().size());
-        assertFalse(game.isSpaceFreeToMove(targetCoordinates));
+        assertFalse(game.spaceIsNotOccupied(targetCoordinates));
     }
 
     @Test
@@ -340,7 +340,7 @@ class EventProcessorTest {
 
         Thread.sleep(1000);
         assertTrue(game.getMoves().isEmpty());
-        assertTrue(game.isSpaceFreeToMove(targetCoordinates));
+        assertTrue(game.spaceIsNotOccupied(targetCoordinates));
     }
 
     @Test
