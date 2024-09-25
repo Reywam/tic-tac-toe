@@ -374,7 +374,7 @@ public class EventProcessor {
 
         MoveType expectedMoveType = findAppropriateMoveType(event.getMoveType());
         boolean isConsistent = validator.isStateConsistent(event.getState(), expectedMoveType, event.getMoves());
-        if (isConsistent) {
+        if (!isConsistent) {
             log.info("State is inconsistent. Recovering");
             recoveryService.acceptState(event.getSender(), event.getState(), expectedMoveType, event.getMoves());
             log.info("State is recovered");
