@@ -1,6 +1,7 @@
 package com.example.tictactoe.messaging.services;
 
 import com.example.tictactoe.Utils;
+import com.example.tictactoe.configuration.AppConfig;
 import com.example.tictactoe.game.Game;
 import com.example.tictactoe.game.GameState;
 import com.example.tictactoe.game.MoveType;
@@ -21,8 +22,8 @@ import static com.example.tictactoe.Utils.*;
 @Component
 @RequiredArgsConstructor
 public class MessageSender {
-    @Value("${spring.application.name}")
-    private String myself;
+
+    private final AppConfig config;
     private final RabbitTemplate template;
     private final FanoutExchange exchange;
     private final Game game;
@@ -35,7 +36,7 @@ public class MessageSender {
                 if (game.getState() == GameState.INCONSISTENT) {
                     game.rollbackState();
                     if (game.getMoveType() == MoveType.X) {
-                        sendConsistencyCheck(MessageSender.this, myself, game);
+                        sendConsistencyCheck(MessageSender.this, config.getMyself(), game);
                     }
                 }
             }

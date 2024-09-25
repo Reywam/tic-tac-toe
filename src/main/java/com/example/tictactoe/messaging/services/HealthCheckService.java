@@ -1,5 +1,6 @@
 package com.example.tictactoe.messaging.services;
 
+import com.example.tictactoe.configuration.AppConfig;
 import com.example.tictactoe.game.Game;
 import com.example.tictactoe.game.GameState;
 import com.example.tictactoe.messaging.event.AliveEvent;
@@ -26,8 +27,7 @@ public class HealthCheckService {
 
     private final MessageSender sender;
     private final Game game;
-    @Value("${spring.application.name}")
-    private String myself;
+    private final AppConfig config;
 
     public void refresh() {
         opponentResponded = true;
@@ -36,7 +36,7 @@ public class HealthCheckService {
 
     @Scheduled(fixedDelay = 2, timeUnit = TimeUnit.SECONDS)
     public void notifyThatServiceIsAlive() {
-        sender.send(new AliveEvent(myself));
+        sender.send(new AliveEvent(config.getMyself()));
     }
 
     @Scheduled(fixedDelay = 1, timeUnit = TimeUnit.SECONDS)
