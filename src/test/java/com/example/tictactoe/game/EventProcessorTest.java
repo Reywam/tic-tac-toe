@@ -2,6 +2,7 @@ package com.example.tictactoe.game;
 
 import com.example.tictactoe.messaging.event.*;
 import com.example.tictactoe.messaging.request.*;
+import com.example.tictactoe.messaging.services.HealthCheckService;
 import com.example.tictactoe.messaging.services.MessageSender;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -51,6 +53,8 @@ class EventProcessorTest {
     private RabbitTemplate template;
     @Autowired
     private FanoutExchange exchange;
+    @MockBean
+    private HealthCheckService healthCheckService;
 
     @SpyBean
     private Game game;

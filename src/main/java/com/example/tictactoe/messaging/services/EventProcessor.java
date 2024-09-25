@@ -16,6 +16,7 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -56,7 +57,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(PlayRequest event) {
+    public void receive(@Payload PlayRequest event) {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
@@ -84,7 +85,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(PlayRequestAcceptedEvent event) {
+    public void receive(@Payload PlayRequestAcceptedEvent event) {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
@@ -111,7 +112,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveTypeApprovalRequest event) throws InterruptedException {
+    public void receive(@Payload MoveTypeApprovalRequest event) throws InterruptedException {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
@@ -132,7 +133,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveTypeRejectedEvent event) {
+    public void receive(@Payload MoveTypeRejectedEvent event) {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
@@ -147,7 +148,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveTypeApprovedEvent event) {
+    public void receive(@Payload MoveTypeApprovedEvent event) {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
@@ -167,7 +168,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveApprovalRequest event) {
+    public void receive(@Payload MoveApprovalRequest event) {
         if (validator.isMessageFromMyself(event.getSender())
                 || validator.gameIsNotReadyYet()
                 || validator.isNotExpectedState(GameState.IN_PROGRESS)) {
@@ -198,7 +199,7 @@ public class EventProcessor {
 
 
     @RabbitHandler
-    public void receive(ConsistencyCheckRequest event) {
+    public void receive(@Payload ConsistencyCheckRequest event) {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
@@ -221,7 +222,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(ConsistencyCheckResponse event) {
+    public void receive(@Payload ConsistencyCheckResponse event) {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
@@ -244,7 +245,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveRejectedEvent event) {
+    public void receive(@Payload MoveRejectedEvent event) {
         if (validator.isMessageFromMyself(event.getSender()) || validator.isNotExpectedState(GameState.IN_PROGRESS)) {
             return;
         }
@@ -257,7 +258,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveApprovedEvent event) throws InterruptedException {
+    public void receive(@Payload MoveApprovedEvent event) throws InterruptedException {
         Thread.sleep(moveDelay);
         if (validator.isMessageFromMyself(event.getSender()) || validator.gameIsNotReadyYet()) {
             return;
@@ -277,7 +278,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MoveMadeEvent event) {
+    public void receive(@Payload MoveMadeEvent event) {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
@@ -306,7 +307,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(GameIsOverEvent event) {
+    public void receive(@Payload GameIsOverEvent event) {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
@@ -334,7 +335,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(GameStateRequest event) {
+    public void receive(@Payload GameStateRequest event) {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
@@ -343,7 +344,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(GameStateProvidedEvent event) {
+    public void receive(@Payload GameStateProvidedEvent event) {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
@@ -365,7 +366,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(RecoveryRequest event) {
+    public void receive(@Payload RecoveryRequest event) {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
@@ -385,7 +386,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(InstanceRecoveredEvent event) {
+    public void receive(@Payload InstanceRecoveredEvent event) {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
@@ -396,7 +397,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(MakeMoveRequest event) {
+    public void receive(@Payload MakeMoveRequest event) {
         if (validator.isMessageFromMyself(event.getSender())) {
             return;
         }
@@ -405,7 +406,7 @@ public class EventProcessor {
     }
 
     @RabbitHandler
-    public void receive(AliveEvent event) {
+    public void receive(@Payload AliveEvent event) {
         if (event.getSender().equals(myself)) {
             return;
         }
